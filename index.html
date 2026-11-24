@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Powered Expense Tracker</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <!-- Personal Details Modal -->
+    <div id="user-modal" class="modal-backdrop">
+        <div class="card w-11/12 max-w-lg mx-auto">
+            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">Welcome! Let's get started.</h2>
+            <p class="text-center text-gray-500 mb-6">Please provide some details for a personalized experience.</p>
+            <form id="user-details-form" class="space-y-4">
+                <input type="text" id="user-name" placeholder="Full Name" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="user-age" placeholder="Age" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="number" id="family-members" placeholder="Family Members" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <input type="email" id="user-email" placeholder="Google Mail ID" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
+                    <input type="number" id="user-income" placeholder="Monthly Income" class="w-full p-3 pl-7 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <input type="tel" id="upi-number" placeholder="UPI Linked Number" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Save & Start Tracking</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Systematic Saving Plan (SSP) Modal -->
+    <div id="ssp-modal" class="hidden modal-backdrop">
+        <div class="card w-11/12 max-w-md mx-auto text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">Secure Your Future!</h2>
+            <p class="text-gray-600 mb-4">Start a <span class="font-semibold text-indigo-600">Systematic Saving Plan (SSP)</span>. Choose an amount and a day of the month to automatically set aside savings.</p>
+            
+            <div class="relative my-4">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
+                <input type="number" id="ssp-custom-amount" placeholder="Monthly Saving Amount" class="w-full p-3 pl-7 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
+            </div>
+
+            <div class="relative my-4">
+                 <label for="ssp-day" class="block text-sm font-medium text-gray-700 text-left mb-1">Deduct on this day each month:</label>
+                <input type="number" id="ssp-day" min="1" max="28" placeholder="Day (1-28)" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
+            </div>
+            
+            <div class="flex justify-center gap-4 mt-6">
+                 <button id="decline-ssp-btn" class="w-full bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg hover:bg-gray-400 transition-colors">Maybe Later</button>
+                 <button id="confirm-ssp-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors">Start SSP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Statement Import Modal -->
+    <div id="ai-import-modal" class="hidden modal-backdrop">
+        <div class="card w-11/12 max-w-2xl mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">✨ AI Statement Import</h2>
+                <button id="close-ai-import-btn" class="text-gray-400 hover:text-gray-600 font-bold text-2xl">&times;</button>
+            </div>
+            <div id="ai-import-content">
+                <p class="text-gray-600 mb-4">Paste your transaction statement below (e.g., from an email or SMS). Gemini will automatically extract and categorize your expenses.</p>
+                <textarea id="statement-textarea" class="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="E.g., Payment of Rs. 450 to Zomato on 5 Oct..."></textarea>
+                <button id="analyze-statement-btn" class="w-full mt-4 bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">Analyze Statement</button>
+
+                <div id="ai-import-results" class="hidden mt-6">
+                    <h3 class="text-lg font-bold mb-2">Review & Confirm Expenses</h3>
+                    <p class="text-sm text-gray-500 mb-4">Please check the extracted transactions and correct any categories if needed before importing.</p>
+                    <div id="ai-import-review-list" class="space-y-2 max-h-[30vh] overflow-y-auto pr-2">
+                        <!-- Parsed transactions will be shown here -->
+                    </div>
+                    <div id="ai-import-loading" class="text-center py-4">
+                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                         <p class="mt-2 text-indigo-700">Analyzing...</p>
+                    </div>
+                    <button id="confirm-import-btn" class="w-full mt-4 bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors">Add to My Expenses</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- AI Analysis Modal -->
+    <div id="ai-analysis-modal" class="hidden modal-backdrop">
+        <div class="card w-11/12 max-w-lg mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">✨ AI Spending Analysis</h2>
+                <button id="close-ai-modal-btn" class="text-gray-400 hover:text-gray-600 font-bold text-2xl">&times;</button>
+            </div>
+            <div id="ai-analysis-content" class="text-gray-600 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                <!-- Loading state -->
+                <div id="ai-loading-state" class="text-center py-8">
+                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                     <p class="mt-4 text-indigo-700">Gemini is analyzing your spending...</p>
+                </div>
+                <!-- Result state -->
+                <div id="ai-result-state" class="hidden">
+                    <p id="ai-analysis-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logout-modal" class="hidden modal-backdrop">
+        <div class="card w-11/12 max-w-sm mx-auto">
+            <h2 class="text-xl font-bold text-center text-gray-700 mb-2">Confirm Log Out</h2>
+            <p class="text-center text-gray-500 mb-6">Are you sure? All your data will be permanently deleted from this browser.</p>
+            <div class="flex justify-center gap-4">
+                 <button id="cancel-logout-btn" class="w-full bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors">Cancel</button>
+                 <button id="confirm-logout-btn" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Wrapper -->
+    <div id="app-container" class="hidden p-4 md:p-8 max-w-7xl mx-auto">
+        <header class="mb-8 flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h1 class="text-4xl font-bold text-gray-800">Welcome back, <span id="display-name"></span>!</h1>
+                <p class="text-gray-500" id="daily-notification">Here's your financial summary for today.</p>
+            </div>
+            <button id="logout-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                Log Out
+            </button>
+        </header>
+
+        <!-- Main Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Forms & Transactions -->
+            <div class="lg:col-span-1 space-y-8">
+                <!-- Add Expense Card -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4">Add New Expense</h2>
+                    <form id="expense-form" class="space-y-4">
+                        <input type="text" id="expense-desc" placeholder="Expense Description" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
+                            <input type="number" id="expense-amount" placeholder="Amount" class="w-full p-3 pl-7 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                        </div>
+                        <select id="expense-category" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                            <option value="" disabled selected>Select a Category</option>
+                            <option value="Food">Food</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills">Bills & Utilities</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Health">Health</option>
+                            <option value="Systematic Saving Plan">Systematic Saving Plan</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input type="date" id="expense-date" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors">Add Expense</button>
+                    </form>
+                </div>
+
+                <!-- AI Statement Import Card -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-3">AI Statement Import</h2>
+                    <p class="text-gray-600 mb-4">Save time by pasting a transaction statement and letting AI do the work.</p>
+                    <button id="open-ai-import-btn" class="w-full bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors">Import from Statement</button>
+                </div>
+
+
+                <!-- Recent Transactions -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4">Recent Transactions</h2>
+                    <div id="transactions-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        <!-- Transactions will be injected here by JS -->
+                        <p class="text-gray-500">No transactions yet. Add one above!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Dashboard & Charts -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Balance Summary -->
+                <div class="card bg-indigo-600 text-white p-6">
+                    <h2 class="text-xl font-bold mb-4">Overall Balance Summary</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                        <!-- Monthly Summary -->
+                        <div class="space-y-2">
+                            <h3 class="text-lg font-semibold text-indigo-100 border-b border-indigo-400 pb-2 mb-2">This Month</h3>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Budget</h4>
+                                <p class="text-2xl font-bold" id="monthly-budget">₹0</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Expenses</h4>
+                                <p class="text-2xl font-bold" id="total-expenses">₹0</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Balance</h4>
+                                <p class="text-2xl font-bold" id="remaining-balance">₹0</p>
+                            </div>
+                        </div>
+                        <!-- Yearly Summary -->
+                        <div class="space-y-2">
+                            <h3 class="text-lg font-semibold text-indigo-100 border-b border-indigo-400 pb-2 mb-2">This Year</h3>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Budget</h4>
+                                <p class="text-2xl font-bold" id="yearly-budget">₹0</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Expenses</h4>
+                                <p class="text-2xl font-bold" id="yearly-expenses">₹0</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Balance</h4>
+                                <p class="text-2xl font-bold" id="yearly-balance">₹0</p>
+                            </div>
+                        </div>
+                        <!-- Financial Year Summary -->
+                        <div class="space-y-2">
+                            <h3 class="text-lg font-semibold text-indigo-100 border-b border-indigo-400 pb-2 mb-2">Financial Year</h3>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Budget</h4>
+                                <p class="text-2xl font-bold" id="fy-budget">₹0</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Expenses</h4>
+                                <p class="text-2xl font-bold" id="fy-expenses">₹0</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-indigo-200 uppercase tracking-wider">Balance</h4>
+                                <p class="text-2xl font-bold" id="fy-balance">₹0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SSP Management -->
+                <div id="ssp-management-card" class="card"></div>
+                
+                <!-- Stats Cards -->
+                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="card text-center">
+                        <h3 class="text-sm font-medium text-gray-500">Avg. Weekly</h3>
+                        <p class="text-2xl font-bold text-green-600" id="avg-week">₹0</p>
+                    </div>
+                    <div class="card text-center">
+                        <h3 class="text-sm font-medium text-gray-500">Avg. Monthly</h3>
+                        <p class="text-2xl font-bold text-green-600" id="avg-month">₹0</p>
+                    </div>
+                    <div class="card text-center">
+                        <h3 class="text-sm font-medium text-gray-500">Avg. Yearly</h3>
+                        <p class="text-2xl font-bold text-green-600" id="avg-year">₹0</p>
+                    </div>
+                     <div class="card text-center">
+                        <h3 class="text-sm font-medium text-gray-500">Avg. Financial Yr</h3>
+                        <p class="text-2xl font-bold text-green-600" id="avg-fy">₹0</p>
+                    </div>
+                </div>
+                
+                <!-- AI Insights -->
+                <div class="card bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <h2 class="text-xl font-bold mb-3">✨ AI Insights</h2>
+                    <p class="text-gray-600 mb-4">Get a personalized summary of your spending habits and smart tips powered by Gemini.</p>
+                    <button id="analyze-spending-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+                        Analyze This Month's Spending
+                    </button>
+                </div>
+
+
+                 <!-- AI Motivational Message -->
+                 <div id="motivation-box" class="card hidden bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-500">
+                    <h3 class="text-lg font-bold text-red-800 mb-2">✨ Smart Savings Coach</h3>
+                    <div id="motivation-content">
+                        <p id="motivation-text" class="text-red-700"></p>
+                    </div>
+                </div>
+                
+                 <!-- Charts -->
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
+                    <div class="card md:col-span-2">
+                        <h2 class="text-xl font-bold mb-4">Expense Categories</h2>
+                        <canvas id="category-pie-chart"></canvas>
+                    </div>
+                    <div class="card md:col-span-3">
+                         <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">Spending Trends</h2>
+                            <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                                <button class="btn-chart-view active" data-period="weekly">Week</button>
+                                <button class="btn-chart-view" data-period="monthly">Month</button>
+                                <button class="btn-chart-view" data-period="yearly">Year</button>
+                                <button class="btn-chart-view" data-period="fy">FY</button>
+                            </div>
+                         </div>
+                        <canvas id="spending-bar-chart" class="w-full"></canvas>
+                    </div>
+                </div>
+
+                <!-- Data Export -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4">Data Management</h2>
+                    <p class="text-gray-500 mb-4">Save a copy of all your transactions to a CSV file.</p>
+                    <button id="download-csv" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-800 transition-colors">
+                        Download CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const userModal = document.getElementById('user-modal');
+            const appContainer = document.getElementById('app-container');
+            const userDetailsForm = document.getElementById('user-details-form');
+            const expenseForm = document.getElementById('expense-form');
+            const displayName = document.getElementById('display-name');
+            const transactionsList = document.getElementById('transactions-list');
+            const downloadCsvBtn = document.getElementById('download-csv');
+            const motivationBox = document.getElementById('motivation-box');
+            const motivationText = document.getElementById('motivation-text');
+            const logoutBtn = document.getElementById('logout-btn');
+            const logoutModal = document.getElementById('logout-modal');
+            const confirmLogoutBtn = document.getElementById('confirm-logout-btn');
+            const cancelLogoutBtn = document.getElementById('cancel-logout-btn');
+            const sspModal = document.getElementById('ssp-modal');
+            const confirmSspBtn = document.getElementById('confirm-ssp-btn');
+            const declineSspBtn = document.getElementById('decline-ssp-btn');
+            const sspManagementCard = document.getElementById('ssp-management-card');
+            
+            const aiAnalysisModal = document.getElementById('ai-analysis-modal');
+            const closeAiModalBtn = document.getElementById('close-ai-modal-btn');
+            const analyzeSpendingBtn = document.getElementById('analyze-spending-btn');
+            const aiLoadingState = document.getElementById('ai-loading-state');
+            const aiResultState = document.getElementById('ai-result-state');
+            const aiAnalysisText = document.getElementById('ai-analysis-text');
+
+            const aiImportModal = document.getElementById('ai-import-modal');
+            const openAiImportBtn = document.getElementById('open-ai-import-btn');
+            const closeAiImportBtn = document.getElementById('close-ai-import-btn');
+            const analyzeStatementBtn = document.getElementById('analyze-statement-btn');
+            const aiImportResults = document.getElementById('ai-import-results');
+            const aiImportLoading = document.getElementById('ai-import-loading');
+            const aiImportReviewList = document.getElementById('ai-import-review-list');
+            const confirmImportBtn = document.getElementById('confirm-import-btn');
+
+            // Chart instances
+            let categoryPieChart;
+            let spendingBarChart;
+
+            // App State
+            let user = {};
+            let expenses = [];
+            const availableCategories = ["Food", "Transport", "Shopping", "Bills", "Entertainment", "Health", "Other"];
+
+            
+            // --- Initialization ---
+            function init() {
+                loadState();
+                if (!user.name) {
+                    userModal.style.display = 'flex';
+                } else {
+                    appContainer.style.display = 'block';
+                    userModal.style.display = 'none';
+
+                    // Check for and add recurring SSP
+                    handleRecurringSSP();
+
+                    render();
+                    setupDailyNotification();
+                    
+                    // Show SSP modal only if user hasn't made a decision before
+                    if (user.sspDecisionMade === undefined) {
+                        sspModal.style.display = 'flex';
+                    }
+                }
+
+                setupEventListeners();
+            }
+
+            // --- State Management ---
+            function loadState() {
+                const storedUser = localStorage.getItem('expenseTrackerUser');
+                const storedExpenses = localStorage.getItem('expenseTrackerExpenses');
+                if (storedUser) user = JSON.parse(storedUser);
+                if (storedExpenses) expenses = JSON.parse(storedExpenses).map(e => ({...e, date: new Date(e.date)}));
+            }
+
+            function saveState() {
+                localStorage.setItem('expenseTrackerUser', JSON.stringify(user));
+                localStorage.setItem('expenseTrackerExpenses', JSON.stringify(expenses));
+            }
+
+            // --- Event Listeners ---
+            function setupEventListeners() {
+                userDetailsForm.addEventListener('submit', handleUserDetails);
+                expenseForm.addEventListener('submit', handleAddExpense);
+                downloadCsvBtn.addEventListener('click', handleDownloadCsv);
+
+                // Gemini AI Listeners
+                analyzeSpendingBtn.addEventListener('click', handleAnalyzeSpending);
+                closeAiModalBtn.addEventListener('click', () => { aiAnalysisModal.style.display = 'none'; });
+
+                // AI Statement Import Listeners
+                openAiImportBtn.addEventListener('click', () => { aiImportModal.style.display = 'flex'; });
+                closeAiImportBtn.addEventListener('click', () => { aiImportModal.style.display = 'none'; });
+                analyzeStatementBtn.addEventListener('click', handleAnalyzeStatement);
+                confirmImportBtn.addEventListener('click', handleConfirmImport);
+
+                // SSP Listeners
+                confirmSspBtn.addEventListener('click', handleStartSsp);
+                declineSspBtn.addEventListener('click', handleDeclineSsp);
+
+                // SSP Management Card Listener (Event Delegation)
+                sspManagementCard.addEventListener('click', (e) => {
+                    const targetId = e.target.id;
+
+                    if (targetId === 'edit-ssp-btn' || targetId === 'start-ssp-btn') {
+                        if (user.sspActive) {
+                            document.getElementById('ssp-custom-amount').value = user.sspAmount;
+                            document.getElementById('ssp-day').value = user.sspDay;
+                        } else {
+                            document.getElementById('ssp-custom-amount').value = '';
+                            document.getElementById('ssp-day').value = '';
+                        }
+                        sspModal.style.display = 'flex';
+                    } else if (targetId === 'stop-ssp-btn') {
+                        user.sspActive = false;
+                        saveState();
+                        render();
+                    }
+                });
+
+
+                // Logout listeners
+                logoutBtn.addEventListener('click', () => {
+                    logoutModal.style.display = 'flex';
+                });
+                cancelLogoutBtn.addEventListener('click', () => {
+                    logoutModal.style.display = 'none';
+                });
+                confirmLogoutBtn.addEventListener('click', handleConfirmLogout);
+
+
+                document.querySelectorAll('.btn-chart-view').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.btn-chart-view').forEach(b => b.classList.remove('active', 'bg-white', 'shadow-sm'));
+                        e.target.classList.add('active', 'bg-white', 'shadow-sm');
+                        renderBarChart(e.target.dataset.period);
+                    });
+                });
+                
+
+                // Style for chart buttons
+                document.querySelectorAll('.btn-chart-view').forEach(b => {
+                    b.classList.add('px-3', 'py-1', 'rounded-md', 'text-sm', 'font-medium', 'text-gray-600', 'transition-all');
+                });
+                document.querySelector('.btn-chart-view.active').classList.add('bg-white', 'shadow-sm');
+
+
+                transactionsList.addEventListener('click', handleDeleteExpense);
+            }
+
+            // --- Handlers ---
+            function handleUserDetails(e) {
+                e.preventDefault();
+                user = {
+                    name: document.getElementById('user-name').value,
+                    age: document.getElementById('user-age').value,
+                    familyMembers: document.getElementById('family-members').value,
+                    email: document.getElementById('user-email').value,
+                    income: parseFloat(document.getElementById('user-income').value),
+                    upi: document.getElementById('upi-number').value,
+                };
+                saveState();
+                init();
+            }
+
+            function handleStartSsp() {
+                const customAmount = parseFloat(document.getElementById('ssp-custom-amount').value);
+                const customDay = parseInt(document.getElementById('ssp-day').value);
+
+                if (!customAmount || customAmount <= 0 || !customDay || customDay < 1 || customDay > 28) {
+                    const confirmBtn = document.getElementById('confirm-ssp-btn');
+                    const originalText = confirmBtn.textContent;
+                    confirmBtn.textContent = 'Invalid Input!';
+                    confirmBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                    setTimeout(() => {
+                        confirmBtn.textContent = originalText;
+                        confirmBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                    }, 2000);
+                    return;
+                }
+                
+                user.sspDecisionMade = true;
+                user.sspActive = true;
+                user.sspAmount = customAmount;
+                user.sspDay = customDay;
+
+                sspModal.style.display = 'none';
+                handleRecurringSSP(); // Run check immediately
+                saveState();
+                render();
+            }
+
+            function handleDeclineSsp() {
+                user.sspDecisionMade = true;
+                user.sspActive = false;
+                saveState();
+                sspModal.style.display = 'none';
+                render(); // Re-render to show the "Start SSP" card
+            }
+
+            function handleRecurringSSP() {
+                if (!user.sspActive || !user.sspDay || !user.sspAmount) {
+                    return;
+                }
+
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+                
+                const sspExistsThisMonth = expenses.some(exp => 
+                    exp.category === 'Systematic Saving Plan' &&
+                    new Date(exp.date).getMonth() === currentMonth &&
+                    new Date(exp.date).getFullYear() === currentYear
+                );
+
+                if (!sspExistsThisMonth && today.getDate() >= user.sspDay) {
+                    const sspExpense = {
+                        id: Date.now(),
+                        desc: "Monthly Systematic Saving",
+                        amount: user.sspAmount,
+                        category: "Systematic Saving Plan",
+                        date: new Date(currentYear, currentMonth, user.sspDay)
+                    };
+                    expenses.push(sspExpense);
+                    expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    saveState();
+                }
+            }
+            
+            function handleConfirmLogout() {
+                localStorage.removeItem('expenseTrackerUser');
+                localStorage.removeItem('expenseTrackerExpenses');
+                location.reload();
+            }
+
+            function handleAddExpense(e) {
+                e.preventDefault();
+                const newExpense = {
+                    id: Date.now(),
+                    desc: document.getElementById('expense-desc').value,
+                    amount: parseFloat(document.getElementById('expense-amount').value),
+                    category: document.getElementById('expense-category').value,
+                    date: new Date(document.getElementById('expense-date').value),
+                };
+                expenses.push(newExpense);
+                expenses.sort((a, b) => b.date - a.date); // Keep it sorted
+                saveState();
+                render();
+                expenseForm.reset();
+                document.getElementById('expense-date').valueAsDate = new Date();
+            }
+
+            function handleDeleteExpense(e) {
+                if(e.target.classList.contains('delete-btn')) {
+                    const id = parseInt(e.target.dataset.id);
+                    expenses = expenses.filter(exp => exp.id !== id);
+                    saveState();
+                    render();
+                }
+            }
+            
+            function handleDownloadCsv() {
+                if (expenses.length === 0) {
+                    const originalButtonText = downloadCsvBtn.innerHTML;
+                    downloadCsvBtn.innerHTML = 'No data to download!';
+                    downloadCsvBtn.disabled = true;
+                    setTimeout(() => {
+                        downloadCsvBtn.innerHTML = originalButtonText;
+                        downloadCsvBtn.disabled = false;
+                    }, 2500);
+                    return;
+                }
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "ID,Description,Amount,Category,Date\r\n";
+                expenses.forEach(exp => {
+                    const row = [exp.id, exp.desc, exp.amount, exp.category, exp.date.toLocaleDateString()].join(',');
+                    csvContent += row + "\r\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `expenses_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // --- Rendering ---
+            function render() {
+                displayName.textContent = user.name.split(' ')[0];
+                renderSspStatus();
+                renderBudgetSummary();
+                renderTransactions();
+                renderStats();
+                renderPieChart();
+                renderBarChart(); // Default to weekly
+                checkBudgetAndMotivate();
+            }
+
+            function renderSspStatus() {
+                if (user.sspDecisionMade === undefined) {
+                    sspManagementCard.style.display = 'none';
+                    return;
+                }
+
+                sspManagementCard.style.display = 'block';
+
+                if (user.sspActive) {
+                    sspManagementCard.innerHTML = `
+                        <div class="flex justify-between items-center">
+                           <h2 class="text-xl font-bold">Your Saving Plan</h2>
+                           <span class="text-xs font-semibold uppercase tracking-wider bg-green-100 text-green-800 px-2 py-1 rounded-full">ACTIVE</span>
+                        </div>
+                        <p class="text-gray-600 my-4">You are automatically saving <strong class="text-green-700">₹${user.sspAmount.toLocaleString('en-IN')}</strong> on day <strong class="text-green-700">${user.sspDay}</strong> of each month.</p>
+                        <div class="flex gap-4">
+                            <button id="edit-ssp-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">Edit Plan</button>
+                            <button id="stop-ssp-btn" class="w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">Stop Plan</button>
+                        </div>
+                    `;
+                } else {
+                    sspManagementCard.innerHTML = `
+                        <h2 class="text-xl font-bold mb-2">Start a Saving Plan</h2>
+                        <p class="text-gray-600 mb-4">Automate your savings to reach your financial goals faster. Set up a Systematic Saving Plan today!</p>
+                        <button id="start-ssp-btn" class="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors">Start Saving Plan</button>
+                    `;
+                }
+            }
+
+            function applyBalanceColor(element, balance, budget) {
+                element.classList.remove('text-white', 'text-yellow-300', 'text-red-300');
+                if (budget <= 0) {
+                    element.classList.add('text-white');
+                    return;
+                }
+                if (balance < 0) {
+                    element.classList.add('text-red-300');
+                } else if (balance < (budget * 0.25)) {
+                    element.classList.add('text-yellow-300');
+                } else {
+                    element.classList.add('text-white');
+                }
+            }
+
+            function renderBudgetSummary() {
+                const today = new Date();
+                const monthlyBudget = user.income || 0;
+                
+                // --- Monthly ---
+                const currentMonthExpenses = expenses
+                    .filter(exp => exp.date.getMonth() === today.getMonth() && exp.date.getFullYear() === today.getFullYear())
+                    .reduce((sum, exp) => sum + exp.amount, 0);
+                const remainingBalance = monthlyBudget - currentMonthExpenses;
+                document.getElementById('monthly-budget').textContent = `₹${monthlyBudget.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                document.getElementById('total-expenses').textContent = `₹${currentMonthExpenses.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                const monthlyBalanceEl = document.getElementById('remaining-balance');
+                monthlyBalanceEl.textContent = `₹${remainingBalance.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                applyBalanceColor(monthlyBalanceEl, remainingBalance, monthlyBudget);
+                
+                // --- Yearly ---
+                const yearlyBudget = monthlyBudget * 12;
+                const currentYearExpenses = expenses
+                    .filter(exp => exp.date.getFullYear() === today.getFullYear())
+                    .reduce((sum, exp) => sum + exp.amount, 0);
+                const remainingYearlyBalance = yearlyBudget - currentYearExpenses;
+                document.getElementById('yearly-budget').textContent = `₹${yearlyBudget.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                document.getElementById('yearly-expenses').textContent = `₹${currentYearExpenses.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                const yearlyBalanceEl = document.getElementById('yearly-balance');
+                yearlyBalanceEl.textContent = `₹${remainingYearlyBalance.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                applyBalanceColor(yearlyBalanceEl, remainingYearlyBalance, yearlyBudget);
+
+                // --- Financial Year ---
+                const fyBudget = yearlyBudget;
+                const currentFy = getFinancialYear(today);
+                const currentFyExpenses = expenses
+                    .filter(exp => getFinancialYear(exp.date) === currentFy)
+                    .reduce((sum, exp) => sum + exp.amount, 0);
+                const remainingFyBalance = fyBudget - currentFyExpenses;
+                document.getElementById('fy-budget').textContent = `₹${fyBudget.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                document.getElementById('fy-expenses').textContent = `₹${currentFyExpenses.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                const fyBalanceEl = document.getElementById('fy-balance');
+                fyBalanceEl.textContent = `₹${remainingFyBalance.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+                applyBalanceColor(fyBalanceEl, remainingFyBalance, fyBudget);
+            }
+            
+            function setupDailyNotification(){
+                const today = new Date().toLocaleDateString();
+                document.getElementById('daily-notification').textContent = `Here's your financial summary for ${today}. Remember to log all your expenses!`;
+                document.getElementById('expense-date').valueAsDate = new Date();
+            }
+
+            function renderTransactions() {
+                if (expenses.length === 0) {
+                    transactionsList.innerHTML = `<p class="text-gray-500 text-center py-4">No transactions yet. Add one to get started!</p>`;
+                    return;
+                }
+                transactionsList.innerHTML = expenses.map(exp => `
+                    <div class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 ${exp.category === 'Systematic Saving Plan' ? 'bg-green-50' : ''}">
+                        <div>
+                            <p class="font-semibold">${exp.desc}</p>
+                            <p class="text-sm text-gray-500">${exp.category} &bull; ${exp.date.toLocaleDateString()}</p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                           <p class="font-bold text-lg ${exp.category === 'Systematic Saving Plan' ? 'text-green-600' : 'text-red-500'}">₹${exp.amount.toFixed(2)}</p>
+                           <button data-id="${exp.id}" class="delete-btn text-gray-400 hover:text-red-600">&times;</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // --- Calculations & Stats ---
+            function getWeekNumber(d) {
+                d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+                var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+                var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+                return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+            }
+            
+            function getFinancialYear(d) {
+                const year = d.getFullYear();
+                const month = d.getMonth();
+                return (month >= 3) ? `${year}-${String(year + 1).slice(-2)}` : `${year - 1}-${String(year).slice(-2)}`;
+            }
+
+            function calculateAverage(period) {
+                if (expenses.length === 0) return 0;
+                
+                const groups = expenses.reduce((acc, exp) => {
+                    let key;
+                    switch(period) {
+                        case 'weekly': key = getWeekNumber(exp.date); break;
+                        case 'monthly': key = exp.date.getFullYear() + '-' + (exp.date.getMonth() + 1); break;
+                        case 'yearly': key = exp.date.getFullYear(); break;
+                        case 'fy': key = getFinancialYear(exp.date); break;
+                    }
+                    acc[key] = (acc[key] || 0) + exp.amount;
+                    return acc;
+                }, {});
+
+                const values = Object.values(groups);
+                if (values.length === 0) return 0;
+                const total = values.reduce((sum, val) => sum + val, 0);
+                return total / values.length;
+            }
+
+            function renderStats() {
+                document.getElementById('avg-week').textContent = `₹${calculateAverage('weekly').toFixed(2)}`;
+                document.getElementById('avg-month').textContent = `₹${calculateAverage('monthly').toFixed(2)}`;
+                document.getElementById('avg-year').textContent = `₹${calculateAverage('yearly').toFixed(2)}`;
+                document.getElementById('avg-fy').textContent = `₹${calculateAverage('fy').toFixed(2)}`;
+            }
+            
+            // --- Gemini API Integration ---
+
+            async function callGeminiApi(prompt) {
+                const apiKey = ""; // API key is handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                };
+
+                try {
+                    // Using exponential backoff for retries
+                    let response;
+                    let delay = 1000; // start with 1 second
+                    for (let i = 0; i < 5; i++) {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.ok) break; // Success
+
+                        if (response.status === 429 || response.status >= 500) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2;
+                        } else {
+                            throw new Error(`API request failed with status ${response.status}`);
+                        }
+                    }
+
+                    if (!response || !response.ok) {
+                        throw new Error(`API request failed after retries with status ${response ? response.status : 'unknown'}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        return candidate.content.parts[0].text;
+                    } else {
+                        console.error("Gemini API Response Error: ", result);
+                        return "{\"error\": \"Sorry, I couldn't generate a response. The AI model returned an unexpected result.\"}";
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    return "{\"error\": \"Sorry, an error occurred while trying to connect to the AI service.\"}";
+                }
+            }
+
+            async function handleAnalyzeStatement() {
+                const statementText = document.getElementById('statement-textarea').value;
+                if (!statementText.trim()) {
+                    alert('Please paste your statement text first.');
+                    return;
+                }
+
+                aiImportResults.style.display = 'block';
+                aiImportLoading.style.display = 'block';
+                aiImportReviewList.innerHTML = '';
+                confirmImportBtn.style.display = 'none';
+
+                const today = new Date().toISOString().split('T')[0];
+                const prompt = `You are an expert financial assistant AI. Analyze the following transaction statement. Extract each transaction's description, amount, and date. Assign it to the most appropriate category.
+                Valid categories are: ${JSON.stringify(availableCategories)}.
+                The date must be in 'YYYY-MM-DD' format. If a specific date cannot be found in a transaction line, you MUST use today's date: ${today}.
+                Return ONLY a valid JSON array of objects. Each object must have keys: "description" (string), "amount" (number), "date" (string 'YYYY-MM-DD'), and "category" (string from the valid list). Do not include explanations or markdown.
+                
+                Statement:
+                "${statementText}"`;
+
+                const responseText = await callGeminiApi(prompt);
+                
+                try {
+                    const parsedExpenses = JSON.parse(responseText);
+
+                    if (parsedExpenses.error) {
+                       aiImportReviewList.innerHTML = `<p class="text-red-500">${parsedExpenses.error}</p>`;
+                    } else if (Array.isArray(parsedExpenses) && parsedExpenses.length > 0) {
+                        renderImportReviewList(parsedExpenses);
+                        confirmImportBtn.style.display = 'block';
+                    } else {
+                        aiImportReviewList.innerHTML = `<p class="text-gray-500">Could not find any transactions to import. Please check your statement format.</p>`;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse Gemini response:", e);
+                    aiImportReviewList.innerHTML = `<p class="text-red-500">The AI returned an invalid format. Please try rephrasing your statement or check the text for errors.</p>`;
+                } finally {
+                     aiImportLoading.style.display = 'none';
+                }
+            }
+            
+            function renderImportReviewList(parsedExpenses) {
+                aiImportReviewList.innerHTML = parsedExpenses.map((exp, index) => {
+                    const categoryOptions = availableCategories.map(cat => 
+                        `<option value="${cat}" ${cat === exp.category ? 'selected' : ''}>${cat}</option>`
+                    ).join('');
+
+                    return `
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 items-center p-2 rounded bg-gray-50" data-index="${index}">
+                            <input type="text" value="${exp.description || ''}" class="p-2 border rounded col-span-2 md:col-span-1" data-field="description">
+                            <input type="number" value="${exp.amount || 0}" class="p-2 border rounded" data-field="amount">
+                            <select class="p-2 border rounded bg-white" data-field="category">${categoryOptions}</select>
+                            <input type="date" value="${exp.date || new Date().toISOString().split('T')[0]}" class="p-2 border rounded" data-field="date">
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            function handleConfirmImport() {
+                const reviewItems = aiImportReviewList.querySelectorAll('[data-index]');
+                reviewItems.forEach(item => {
+                    const newExpense = {
+                        id: Date.now() + parseInt(item.dataset.index),
+                        desc: item.querySelector('[data-field="description"]').value,
+                        amount: parseFloat(item.querySelector('[data-field="amount"]').value),
+                        category: item.querySelector('[data-field="category"]').value,
+                        date: new Date(item.querySelector('[data-field="date"]').value),
+                    };
+                    expenses.push(newExpense);
+                });
+
+                expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+                saveState();
+                render();
+                aiImportModal.style.display = 'none';
+                document.getElementById('statement-textarea').value = '';
+                aiImportResults.style.display = 'none';
+            }
+
+
+            async function handleAnalyzeSpending() {
+                aiAnalysisModal.style.display = 'flex';
+                aiLoadingState.style.display = 'block';
+                aiResultState.style.display = 'none';
+
+                const currentMonthExpenses = expenses.filter(exp => exp.date.getMonth() === new Date().getMonth() && exp.date.getFullYear() === new Date().getFullYear());
+                
+                if (currentMonthExpenses.length === 0) {
+                    aiAnalysisText.innerHTML = "You don't have any expenses logged for this month. Add some transactions to get an analysis!";
+                    aiLoadingState.style.display = 'none';
+                    aiResultState.style.display = 'block';
+                    return;
+                }
+
+                const expensesJson = JSON.stringify(currentMonthExpenses.map(e => ({ description: e.desc, amount: e.amount, category: e.category })));
+
+                const prompt = `Act as a financial analyst. Here is a list of my user's expenses for this month in JSON format: ${expensesJson}. Their total monthly income is ₹${user.income}. Provide a brief, one-paragraph summary of their spending habits, highlighting the top 2-3 categories. Then, offer one insightful and creative suggestion for potential savings they might not have considered. Format your response using simple markdown for readability (e.g., use **bold** for emphasis). Keep the tone positive, professional, and empowering.`;
+
+                const analysis = await callGeminiApi(prompt);
+                const formattedAnalysis = analysis
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    .replace(/\n/g, '<br>');
+
+                aiAnalysisText.innerHTML = formattedAnalysis;
+                aiLoadingState.style.display = 'none';
+                aiResultState.style.display = 'block';
+            }
+
+            async function checkBudgetAndMotivate() {
+                const monthlyExpenses = expenses
+                    .filter(exp => exp.date.getMonth() === new Date().getMonth() && exp.date.getFullYear() === new Date().getFullYear())
+                    .reduce((sum, exp) => sum + exp.amount, 0);
+
+                const budgetThreshold = user.income * 0.75; // 75% of income
+
+                if (monthlyExpenses > budgetThreshold && user.income > 0) {
+                    motivationBox.style.display = 'block';
+                    motivationText.innerHTML = `<div class="animate-pulse">Thinking of a smart tip for you...</div>`; // Loading state
+
+                    const overspentCategory = getHighestSpendingCategoryThisMonth();
+                    const recentExpensesString = expenses.slice(0, 5).map(e => `${e.desc}: ₹${e.amount}`).join(', ');
+
+                    const prompt = `Act as a friendly financial coach. My user's monthly income is ₹${user.income}. They are overspending their budget, especially in the "${overspentCategory}" category. Their most recent expenses are: ${recentExpensesString}. Provide a short, encouraging, and actionable tip (max 2-3 sentences) to help them save money, focusing on the "${overspentCategory}" category. Keep the tone positive and address them directly as 'you'.`;
+                    
+                    const aiTip = await callGeminiApi(prompt);
+                    motivationText.innerHTML = aiTip;
+
+                } else {
+                    motivationBox.style.display = 'none';
+                }
+            }
+
+
+            function getHighestSpendingCategoryThisMonth() {
+                 const monthlyCategoryTotals = expenses
+                    .filter(exp => exp.date.getMonth() === new Date().getMonth() && exp.date.getFullYear() === new Date().getFullYear())
+                    .reduce((acc, exp) => {
+                        acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+                        return acc;
+                    }, {});
+                
+                if(Object.keys(monthlyCategoryTotals).length === 0) return "anything";
+                return Object.keys(monthlyCategoryTotals).reduce((a, b) => monthlyCategoryTotals[a] > monthlyCategoryTotals[b] ? a : b);
+            }
+
+            // --- Chart Rendering ---
+            function renderPieChart() {
+                const ctx = document.getElementById('category-pie-chart').getContext('2d');
+                if (categoryPieChart) categoryPieChart.destroy();
+                
+                const categoryTotals = expenses.reduce((acc, exp) => {
+                    acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+                    return acc;
+                }, {});
+
+                categoryPieChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(categoryTotals),
+                        datasets: [{
+                            data: Object.values(categoryTotals),
+                            backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#A855F7', '#6B7280'],
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderBarChart(period = 'weekly') {
+                const ctx = document.getElementById('spending-bar-chart').getContext('2d');
+                if (spendingBarChart) spendingBarChart.destroy();
+
+                let groupedData = {};
+                let sortedLabels = [];
+
+                if (expenses.length > 0) {
+                     groupedData = expenses.reduce((acc, exp) => {
+                        let key;
+                        switch(period) {
+                            case 'weekly': key = getWeekNumber(exp.date); break;
+                            case 'monthly': key = `${exp.date.getFullYear()}-${String(exp.date.getMonth() + 1).padStart(2, '0')}`; break;
+                            case 'yearly': key = exp.date.getFullYear().toString(); break;
+                            case 'fy': key = getFinancialYear(exp.date); break;
+                        }
+                        acc[key] = (acc[key] || 0) + exp.amount;
+                        return acc;
+                    }, {});
+
+                    sortedLabels = Object.keys(groupedData).sort();
+                    if(period === 'weekly') sortedLabels = sortedLabels.slice(-8); // Show last 8 weeks
+                    if(period === 'monthly') sortedLabels = sortedLabels.slice(-12); // Show last 12 months
+                }
+                
+                const data = sortedLabels.map(label => groupedData[label]);
+
+                spendingBarChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedLabels,
+                        datasets: [{
+                            label: 'Total Spending',
+                            data: data,
+                            backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                            borderColor: 'rgba(79, 70, 229, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: true }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+            
+            // --- Balance Dashboard ---
+            function calculateBalanceData(period) {
+                if (!user.income || user.income <= 0) return { labels: [], data: [] };
+
+                let proratedIncome = 0;
+                let keyGetter;
+                
+                const daysInMonth = (m, y) => new Date(y, m, 0).getDate();
+                const today = new Date();
+                const currentDaysInMonth = daysInMonth(today.getMonth() + 1, today.getFullYear());
+                
+                switch(period) {
+                    case 'daily':
+                        proratedIncome = user.income / currentDaysInMonth;
+                        keyGetter = (d) => d.toISOString().split('T')[0];
+                        break;
+                    case 'weekly':
+                        proratedIncome = user.income / (currentDaysInMonth / 7);
+                        keyGetter = getWeekNumber;
+                        break;
+                    case 'monthly':
+                        proratedIncome = user.income;
+                        keyGetter = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                        break;
+                    case 'yearly':
+                        proratedIncome = user.income * 12;
+                        keyGetter = (d) => d.getFullYear().toString();
+                        break;
+                    case 'fy':
+                        proratedIncome = user.income * 12;
+                        keyGetter = getFinancialYear;
+                        break;
+                }
+
+                const expenseGroups = expenses.reduce((acc, exp) => {
+                    if(exp.category === "Systematic Saving Plan") return acc;
+                    const key = keyGetter(exp.date);
+                    acc[key] = (acc[key] || 0) + exp.amount;
+                    return acc;
+                }, {});
+
+                const allKeys = new Set(Object.keys(expenseGroups));
+                if (Object.keys(expenseGroups).length === 0) {
+                    allKeys.add(keyGetter(new Date()));
+                }
+
+                let sortedLabels = Array.from(allKeys).sort();
+
+                if(period === 'daily') sortedLabels = sortedLabels.slice(-14);
+                if(period === 'weekly') sortedLabels = sortedLabels.slice(-12);
+                if(period === 'monthly') sortedLabels = sortedLabels.slice(-12);
+
+                const balanceData = [];
+               
+                for (const label of sortedLabels) {
+                    const expenseTotal = expenseGroups[label] || 0;
+                    const balance = proratedIncome - expenseTotal;
+                    balanceData.push(balance);
+                }
+
+                return { labels: sortedLabels, data: balanceData };
+            }
+
+            function renderBalanceDashboard(period = 'monthly') {
+                const { labels, data } = calculateBalanceData(period);
+                renderBalanceChart(labels, data);
+            }
+
+            function renderBalanceChart(labels, data) {
+                const ctx = document.getElementById('balance-chart').getContext('2d');
+                if (balanceLineChart) {
+                    balanceLineChart.destroy();
+                }
+
+                setTimeout(() => {
+                    balanceLineChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Remaining Balance',
+                                data: data,
+                                borderWidth: 2,
+                                borderColor: 'rgb(107, 114, 128)', 
+                                pointRadius: 4,
+                                tension: 0.1,
+                                fill: {
+                                    target: 'origin',
+                                    above: 'rgba(22, 163, 74, 0.2)',
+                                    below: 'rgba(220, 38, 38, 0.2)'
+                                },
+                                pointBorderColor: context => (context.raw ?? 0) < 0 ? 'rgb(220, 38, 38)' : 'rgb(22, 163, 74)',
+                                pointBackgroundColor: context => (context.raw ?? 0) < 0 ? 'rgb(254, 202, 202)' : 'rgb(187, 247, 208)',
+                                pointBorderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { 
+                                    ticks: {
+                                        callback: function(value) {
+                                            return '₹' + value;
+                                        }
+                                    }
+                                 }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `Balance: ₹${(context.raw || 0).toFixed(2)}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, 10);
+            }
+
+            // Start the application
+            init();
+        });
+    </script>
+</body>
+</html>
+
